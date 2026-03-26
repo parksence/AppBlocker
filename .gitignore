@@ -1,0 +1,25 @@
+# Built artifacts
+bin/
+gen/
+out/
+build/
+.gradle/
+
+# IDE files
+.idea/
+*.iml
+.DS_Store
+
+# Local configuration
+local.properties
+
+# Gradle
+.gradle/
+build/
+
+# External Native Build
+.externalNativeBuild
+.cxx/
+
+# Captures
+captures/
