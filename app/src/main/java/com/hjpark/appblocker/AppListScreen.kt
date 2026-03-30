@@ -13,13 +13,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -28,26 +36,60 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppListScreen(
     onStartBlocking: () -> Unit,
+    blockingStatusRevision: Int = 0,
+    accessibilityEnabled: Boolean,
+    onOpenAccessibilitySettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: AppListViewModel = viewModel(),
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     val context = LocalContext.current
     val pm = remember { context.packageManager }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var serviceRunning by remember { mutableStateOf(false) }
+    fun refreshBlockingRunning() {
+        serviceRunning = context.isBlockingServiceRunning()
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshBlockingRunning()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        refreshBlockingRunning()
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(blockingStatusRevision) {
+        delay(200)
+        refreshBlockingRunning()
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -55,9 +97,22 @@ fun AppListScreen(
             TopAppBar(title = { Text("앱 차단") })
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onStartBlocking) {
-                Text("차단 시작")
-            }
+            ExtendedFloatingActionButton(
+                onClick = onStartBlocking,
+                icon = {
+                    Icon(
+                        imageVector = if (serviceRunning) {
+                            Icons.Filled.CheckCircle
+                        } else {
+                            Icons.Filled.PlayArrow
+                        },
+                        contentDescription = null,
+                    )
+                },
+                text = {
+                    Text(if (serviceRunning) "차단 중" else "차단 시작")
+                },
+            )
         },
     ) { inner ->
         Column(
@@ -65,6 +120,103 @@ fun AppListScreen(
                 .fillMaxSize()
                 .padding(inner),
         ) {
+            if (!accessibilityEnabled) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                    ),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "접근성 서비스 (권장)",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                        Text(
+                            text = "삼성·최신 안드로이드에서는 사용 기록만으로 전면 앱을 놓치는 경우가 있어요. 설정에서 이 앱의 접근성을 켜 주면 차단이 훨씬 잘 됩니다.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        Button(
+                            onClick = onOpenAccessibilitySettings,
+                            modifier = Modifier.padding(top = 12.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Filled.Settings,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = "접근성 설정 열기")
+                            }
+                        }
+                    }
+                }
+            } else {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Filled.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        Text(
+                            text = "접근성 서비스 켜짐 — 전면 앱 감지가 안정적입니다.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(start = 12.dp),
+                        )
+                    }
+                }
+            }
+            if (serviceRunning) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                        Column(modifier = Modifier.padding(start = 12.dp)) {
+                            Text(
+                                text = "차단 감시 실행 중",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                            Text(
+                                text = "상단 알림 바에 「앱 차단 중」이 보여야 해요. 끄려면 알림의 「중지」를 누르세요.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                    }
+                }
+            }
             OutlinedTextField(
                 value = state.searchQuery,
                 onValueChange = viewModel::onSearchQueryChange,
@@ -72,7 +224,7 @@ fun AppListScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 placeholder = { Text("앱 이름으로 검색") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 singleLine = true,
             )
             when {
