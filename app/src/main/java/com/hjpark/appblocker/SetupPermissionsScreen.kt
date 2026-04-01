@@ -74,7 +74,7 @@ fun SetupPermissionsScreen(
 
         SetupPermissionCard(
             title = "1. 사용량 접근",
-            description = "설치된 앱 목록을 보고, 어떤 앱이 전면에 있는지 감지하는 데 필요합니다.",
+            description = "설치된 앱 목록과 전면 앱 감지에 필요합니다. 「설정 열기」는 가능한 기기에서 AppBlocker만의 화면으로 바로 열립니다. 목록만 열리면 AppBlocker를 찾아 허용을 켜 주세요.",
             granted = usageGranted,
             onOpenSettings = onOpenUsageSettings,
         )

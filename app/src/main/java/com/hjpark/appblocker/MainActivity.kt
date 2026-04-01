@@ -42,9 +42,6 @@ class MainActivity : ComponentActivity() {
                 var usageGranted by remember {
                     mutableStateOf(PermissionHelper.hasUsageStatsPermission(context))
                 }
-                var accessibilityEnabled by remember {
-                    mutableStateOf(AccessibilityHelper.isAppBlockerAccessibilityEnabled(context))
-                }
                 var overlayGranted by remember {
                     mutableStateOf(OverlayPermissionHelper.canDrawOverlays(context))
                 }
@@ -53,8 +50,6 @@ class MainActivity : ComponentActivity() {
                     val observer = LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_RESUME) {
                             usageGranted = PermissionHelper.hasUsageStatsPermission(context)
-                            accessibilityEnabled =
-                                AccessibilityHelper.isAppBlockerAccessibilityEnabled(context)
                             overlayGranted = OverlayPermissionHelper.canDrawOverlays(context)
                         }
                     }
@@ -131,10 +126,6 @@ class MainActivity : ComponentActivity() {
                         AppListScreen(
                             onStartBlocking = { tryStartBlocking() },
                             blockingStatusRevision = blockingStatusRevision,
-                            accessibilityEnabled = accessibilityEnabled,
-                            onOpenAccessibilitySettings = {
-                                AccessibilityHelper.openAccessibilitySettings(context)
-                            },
                             viewModel = viewModel(
                                 factory = androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.getInstance(
                                     app,
