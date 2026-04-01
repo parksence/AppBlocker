@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AppDao {
+    /** 실시간 활성 차단 목록(스위치 ON인 패키지). 서비스·접근성은 매 평가 시 이 쿼리로 동기화한다. */
     @Query("SELECT * FROM blocked_apps WHERE isBlocked = 1")
     fun observeBlockedApps(): Flow<List<BlockedApp>>
 

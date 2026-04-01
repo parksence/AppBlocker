@@ -15,8 +15,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -27,6 +27,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hjpark.appblocker.ui.theme.AppBlockerTheme
 
@@ -57,7 +58,6 @@ class MainActivity : ComponentActivity() {
                     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
                 }
 
-                var blockingStatusRevision by remember { mutableIntStateOf(0) }
                 val view = LocalView.current
 
                 val notificationLauncher = rememberLauncherForActivityResult(
@@ -80,7 +80,6 @@ class MainActivity : ComponentActivity() {
                                 Toast.LENGTH_LONG,
                             ).show()
                         }
-                        blockingStatusRevision++
                     } else {
                         Toast.makeText(
                             context,
@@ -117,20 +116,21 @@ class MainActivity : ComponentActivity() {
                             Toast.LENGTH_LONG,
                         ).show()
                     }
-                    blockingStatusRevision++
                 }
 
                 Surface(modifier = Modifier.fillMaxSize()) {
                     if (usageGranted && overlayGranted) {
                         val app: Application = context.applicationContext as Application
+                        val appListViewModel: AppListViewModel = viewModel(
+                            factory = ViewModelProvider.AndroidViewModelFactory.getInstance(app),
+                        )
+                        LaunchedEffect(Unit) {
+                            appListViewModel.autoStartBlockingRequests.collect {
+                                tryStartBlocking()
+                            }
+                        }
                         AppListScreen(
-                            onStartBlocking = { tryStartBlocking() },
-                            blockingStatusRevision = blockingStatusRevision,
-                            viewModel = viewModel(
-                                factory = androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.getInstance(
-                                    app,
-                                ),
-                            ),
+                            viewModel = appListViewModel,
                         )
                     } else {
                         SetupPermissionsScreen(

@@ -146,5 +146,20 @@ class AppBlockerService : Service() {
                 context.startService(i)
             }
         }
+
+        /** 알림의 「중지」와 동일. 실행 중이 아니면 인텐트만 보내지 않고 플래그만 정리한다. */
+        fun stop(context: Context) {
+            val app = context.applicationContext
+            if (!app.isBlockingServiceRunning()) {
+                app.setBlockingServiceRunningFlag(false)
+                return
+            }
+            val i = Intent(app, AppBlockerService::class.java).apply { action = ACTION_STOP }
+            try {
+                app.startService(i)
+            } catch (_: Exception) {
+                app.setBlockingServiceRunningFlag(false)
+            }
+        }
     }
 }

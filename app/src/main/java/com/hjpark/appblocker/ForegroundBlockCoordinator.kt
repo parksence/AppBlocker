@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
+import com.hjpark.appblocker.data.AppDao
 import com.hjpark.appblocker.data.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -46,7 +47,7 @@ internal suspend fun evaluateForegroundPackageCandidate(
     }
 
     val dao = AppDatabase.getInstance(appContext).appDao()
-    val blocked = dao.getBlockedApps().map { it.packageName }.toSet()
+    val blocked = loadActiveBlockPackageSet(dao)
     Log.d(LOG_TAG, "[$source] 차단=$blocked | 현재=$pkg | 매칭=${blocked.contains(pkg)}")
     if (!blocked.contains(pkg)) {
         synchronized(BlockingSession.lock) { BlockingSession.lastLockedSessionPackage = null }
@@ -91,6 +92,10 @@ internal suspend fun evaluateForegroundPackageCandidate(
         }
     }
 }
+
+/** Room에 반영된 활성 차단 목록(스위치 ON). 스위치 조작 직후에도 다음 평가에서 최신값이 읽힌다. */
+private suspend fun loadActiveBlockPackageSet(dao: AppDao): Set<String> =
+    dao.getBlockedApps().map { it.packageName }.toSet()
 
 private fun shouldThrottleLock(pkg: String): Boolean {
     if (!LockOverlayManager.isShowing()) {
